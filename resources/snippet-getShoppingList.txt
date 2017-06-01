@@ -1,0 +1,25 @@
+private void getShoppingList(RoutingContext rc) {
+    HttpServerResponse serverResponse =
+        rc.response().setChunked(true);
+
+    Single<HttpResponse<Buffer>> list =
+        shopping.get("/shopping").rxSend();
+
+    list.subscribe(
+        response -> {
+            JsonObject body =
+                response.bodyAsJsonObject();
+            Observable.from(body)
+                .flatMap(entry ->
+                    retrievePrice(pricer, entry)
+                    .toObservable()
+                )
+                .subscribe(
+                    product ->
+                        writeProductLine(serverResponse, product),
+                        rc::fail,
+                        () -> serverResponse.end()
+                );
+            },
+        rc::fail);
+}
